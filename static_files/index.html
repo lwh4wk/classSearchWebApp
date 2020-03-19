@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>UVA Class Search</title>
+    <link rel="stylesheet" href="bootstrap/css/bootstrap.min.css">
+    <script src="jquery/dist/jquery.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+
+    <script type="text/javascript">
+
+        function populateNumbers() {
+            $('#number').html("<option value=\"none\">Select a Course Number</option>");
+            let department = $('#department').val();
+            $.ajax({
+                url: 'courseNumbers/' + department,
+                type: 'GET',
+                dataType: 'json',
+                success: (data) => {
+                    for (let i = 0; i < data.numbers.length; i++) {
+                        $('#number').html($('#number').html() + "<option value='" + data.numbers[i] + "'>" + data.numbers[i] + "</option>");
+                    }
+                }
+            });
+        }
+
+        function departmentChanged() {
+            let searchButton = $('#searchButton')
+            let numberRow = $('#classNum');
+            if ($('#department').val() === "none") {
+                searchButton.prop('disabled', true);
+                numberRow.prop('hidden', true);
+                $('#number').html("<option value=\"none\">Select a Course Number</option>")
+            } else {
+                numberRow.prop('hidden', false);
+                searchButton.prop('disabled', false);
+                populateNumbers();
+            }
+        }
+
+        $(document).ready(() => {
+            $.ajax({
+                url: 'user/',
+                type: 'POST',
+                dataType: 'json',
+                success: (data) => {
+                    if (data.user == "none") {
+                        $('#navbar-items').html("<li class=\"nav-item\">\n" +
+                            "                    <a class=\"nav-link\" href=\"login.html\" style=\"color: white\">Login</a>\n" +
+                            "                </li>\n" +
+                            "                <li class=\"nav-item\">\n" +
+                            "                    <a class=\"nav-link\" href=\"signup.html\" style=\"color: white\">Sign Up</a>\n" +
+                            "                </li>");
+                    } else {
+                        $("#navbar-items").html("<li class=\"nav-item\">\n" +
+                            "                    <a class=\"nav-link\" href=\"dashboard.html\" style=\"color: white;\">Dashboard</a>\n" +
+                            "                </li>\n" +
+                            "                <li class=\"nav-item\">\n" +
+                            "                    <a class=\"nav-link\" href=\"#\" style=\"color: white;\">Sign Out</a>\n" +
+                            "                </li>");
+                    }
+                }
+            });
+
+            $.ajax({
+                url: 'departments/',
+                type: 'GET',
+                dataType: 'json',
+                success: (data) => {
+                    for (let i = 0; i < data.departments.length; i++) {
+                        $('#department').html($('#department').html() + "<option value='" + data.departments[i] + "'>" + data.departments[i] + "</option>");
+                    }
+                }
+            });
+        });
+
+        function search() {
+            $('#resultsTable').prop('hidden', true);
+            $('#loadingMessage').prop('hidden', false);
+            if ($('#number').val() != 'none') {
+                $.ajax({
+                    url: 'courses/' + $('#department').val() + "/" + $('#number').val(),
+                    type: 'GET',
+                    dataType: 'json',
+                    success: (data) => {
+                        fillTable(data);
+                    }
+                });
+            } else {
+                $.ajax({
+                    url: 'courses/' + $('#department').val(),
+                    type: 'GET',
+                    dataType: 'json',
+                    success: (data) => {
+                        fillTable(data);
+                    }
+                });
+            }
+        }
+
+        function fillTable(data) {
+            let current = "";
+            let courses = data.courses;
+            let table = $('#tableData');
+            table.html("");
+            for (let i = 0; i < data.courses.length; i++) {
+                let sisNumber = courses[i]['ClassNumber'];
+                let mneumonic= courses[i]['Mneumonic'];
+                let number = courses[i]['Number'];
+                let section = "" + courses[i]['Section'];
+                while (section.length < 3) {
+                    section = "0" + section;
+                }
+                let type = courses[i]['Type'];
+                let meetingTimes = courses[i]['Days'] + " " + courses[i]['StartTime'] + " - " + courses[i]['EndTime'];
+                let instructor = courses[i]['Instructor'];
+                let room = courses[i]['Room'];
+                let topic = courses[i]['Topic'];
+                let title = courses[i]['Title'];
+                if (number == current) {
+                    table.html(table.html() + "<tr>" +
+                            `<td>${sisNumber}</td>` +
+                            `<td>${section}</td>` +
+                            `<td>${type}</td>` +
+                            `<td>${meetingTimes}</td>` +
+                            `<td>${instructor}</td>` +
+                            `<td>${room}</td>` +
+                            `<td>${topic}</td>` +
+                        "</tr>")
+                } else {
+                    table.html(table.html() + "<tr>" +
+                        "   <th class=\"table-secondary\" scope='row' colspan='7' style='font-size: 20px;'>" + mneumonic + " " + number + ": " + title +  "</th>" +
+                        "</tr>");
+                    table.html(table.html() + "<tr>" +
+                        `<td>${sisNumber}</td>` +
+                        `<td>${section}</td>` +
+                        `<td>${type}</td>` +
+                        `<td>${meetingTimes}</td>` +
+                        `<td>${instructor}</td>` +
+                        `<td>${room}</td>` +
+                        `<td>${topic}</td>` +
+                        "</tr>")
+                    current = courses[i]['Number'];
+                }
+            }
+            $('#loadingMessage').prop('hidden', true);
+            $('#resultsTable').prop('hidden', false);
+        }
+
+
+    </script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light" style="background-color: #1ab2ff;">
+        <a class="navbar-brand" href="#" style="color: white;">Home</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#collapsibleNavbar">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse justify-content-end" id="collapsibleNavbar">
+            <ul class="navbar-nav" id="navbar-items"></ul>
+        </div>
+    </nav>
+    <div class="jumbotron jumbotron-fluid" >
+        <div class="container text-center">
+            <h1 class="display-4" id="test">UVA Class Search</h1>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="container" style="width:50%;">
+            <form>
+                <div class="form-group row">
+                    <label for="department" class="col-sm-4 col-form-label">Department: </label>
+                    <div class="col-sm-8">
+                        <select class="form-control" id="department" onchange="departmentChanged()">
+                            <option value="none">Select a Department</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="classNum" class="form-group row" hidden>
+                    <label for="number" class="col-sm-4 col-form-label">Course Number (Optional): </label>
+                    <div class="col-sm-8">
+                        <select class="form-control" id="number">
+                            <option value="none">Select a Course Number</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group row justify-content-center">
+                    <button id="searchButton" type="button" class="btn btn-primary" onclick="search()" disabled>Search</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="row" id="loadingMessage" hidden>
+        <div class="container text-center justify-content-center">
+            <h3>Loading ...</h3>
+        </div>
+    </div>
+    <div class="row" id="resultsTable" hidden>
+        <div class="container-fluid" style="padding-left:2%; padding-right:2%;">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col">SIS Number</th>
+                        <th scope="col">Section</th>
+                        <th scope="col">Type</th>
+                        <th scope="col">Meeting Times</th>
+                        <th scope="col">Instructor</th>
+                        <th scope="col">Room</th>
+                        <th scope="col">Topic</th>
+                    </tr>
+                </thead>
+                <tbody id="tableData"></tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
